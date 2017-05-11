@@ -3,14 +3,14 @@ import torch
 import numpy as np
 from datetime import datetime
 
-from faster_rcnn import network
-from faster_rcnn.faster_rcnn import FasterRCNN, RPN
-from faster_rcnn.utils.timer import Timer
+from .faster_rcnn import network
+from .faster_rcnn.faster_rcnn import FasterRCNN, RPN
+from .faster_rcnn.utils.timer import Timer
 
-import faster_rcnn.roi_data_layer.roidb as rdl_roidb
-from faster_rcnn.roi_data_layer.layer import RoIDataLayer
-from faster_rcnn.datasets.factory import get_imdb
-from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file
+from . import faster_rcnn.roi_data_layer.roidb as rdl_roidb
+from .faster_rcnn.roi_data_layer.layer import RoIDataLayer
+from .faster_rcnn.datasets.factory import get_imdb
+from .faster_rcnn.fast_rcnn.config import cfg, cfg_from_file
 
 try:
     from termcolor import cprint
@@ -169,7 +169,7 @@ for step in range(start_step, end_step+1):
     if (step % 10000 == 0) and step > 0:
         save_name = os.path.join(output_dir, 'faster_rcnn_{}.h5'.format(step))
         network.save_net(save_name, net)
-        print('save model: {}'.format(save_name))
+        print(('save model: {}'.format(save_name)))
     if step in lr_decay_steps:
         lr *= lr_decay
         optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)

@@ -19,9 +19,22 @@ by Shaoqing Ren, Kaiming He, Ross Girshick, Jian Sun.
 
 ### Installation and demo
 1. Clone the Faster R-CNN repository
-    ```bash
-    git clone git@github.com:longcw/faster_rcnn_pytorch.git
-    ```
+
+2. Create a virtualenv (or use one you already have) with Python 3.5+ and PyTorch
+
+2. Follow [this tutorial](https://foxrow.com/installing-opencv-in-a-virtualenv) to setup OpenCV:
+   ```
+   sudo apt-get install build-essential cmake libgtk2.0-dev pkg-config \
+python-dev libavcodec-dev libavformat-dev libswscale-dev
+   sudo pip install numpy
+```
+- [Download OpenCV](https://sourceforge.net/projects/opencvlibrary/files/latest/download) and unpack to your home directory
+  ```
+  mkdir build; cd build; cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_NEW_PYTHON_SUPPORT=ON ..
+  make; sudo make install -j6
+  ```
+- then ``cp /usr/local/lib/python3.5/dist-packages/cv2.so ~/code/pytorch-seq2seq/venv/lib/python3.5/site-packages
+
 
 2. Build the Cython modules for nms and the roi_pooling layer
     ```bash
@@ -30,7 +43,9 @@ by Shaoqing Ren, Kaiming He, Ross Girshick, Jian Sun.
     ```
 3. Download the trained model [VGGnet_fast_rcnn_iter_70000.h5](https://drive.google.com/open?id=0B4pXCfnYmG1WOXdpYVFybWxiZFE) 
 and set the model path in `demo.py`
-3. Run demo `python demo.py`
+
+3. ``` export PYTHONPATH="/home/rowan/tools/faster_rcnn_pytorch/faster_rcnn" ```
+4. Run demo `python demo.py`
 
 ### Training on Pascal VOC 2007
 
