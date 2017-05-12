@@ -1,5 +1,6 @@
 # Dataset Preparation
-Adapted from [Danfei Xu](https://github.com/danfeiX/scene-graph-TF-release/blob/master/data_tools/README.md)
+Adapted from [Danfei Xu](https://github.com/danfeiX/scene-graph-TF-release/blob/master/data_tools/README.md).
+
 This instruction contains details about how to convert the VisualGenome dataset into a format that can be read by the framework. Alternatively,
 you may follow the instruction to download a pre-processed dataset.
 
