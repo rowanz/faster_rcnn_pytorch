@@ -25,28 +25,14 @@ You may download the pre-processd full VG dataset using the following links
 4. RoI proposals: [proposals.h5](http://cvgl.stanford.edu/scene-graph/dataset/proposals.h5)
 5. RoI distribution: [bbox_distribution.npy](http://cvgl.stanford.edu/scene-graph/dataset/bbox_distribution.npy)
 
-**mini-vg:** Alternatively, you may download a subset of the dataset (mini-vg). The dataset contains 1000 images (973 have scene graph annotations) from the test set
-of the full VG dataset and no training data. mini-vg takes around 4GB of space uncompressed. Note that you don't have to download it if you have ran the `download.sh` script.
-
-[mini-vg.zip](http://cvgl.stanford.edu/scene-graph/dataset/mini-vg.zip)
-
-After downloading the dataset, place all files under `data/vg/`. If you use the mini-vg dataset, the directory should look like this:
-
-```
-data/vg/mini_imdb_1024.h5
-data/vg/mini_proposals.h5
-data/vg/mini_VG-SGG.h5
-data/vg/mini_VG-SGG-dicts.h5
-```
-
 
 ## Convert VisualGenome to desired format
 (i). To start with, download VisualGenome dataset using the following links:
-- Images [part1](https://cs.stanford.edu/people/rak248/VG_100K_2/images.zip) [part2](https://cs.stanford.edu/people/rak248/VG_100K_2/images2.zip). Put the images in the folder `VG_100K`
-- [Image metadata](http://cvgl.stanford.edu/scene-graph/VG/image_data.json) Put the metadata under `datasetv1_2`
-- [VG scene graph](http://cvgl.stanford.edu/scene-graph/VG/VG-scene-graph.zip) Extract this to `scene_graphs`
+- Images [part1](https://cs.stanford.edu/people/rak248/VG_100K_2/images.zip) [part2](https://cs.stanford.edu/people/rak248/VG_100K_2/images2.zip). Put the images in the folder `data/visual_genome/VG_100K`
+- [Image metadata](http://cvgl.stanford.edu/scene-graph/VG/image_data.json) Put the metadata under `data/visual_genome/datasetv1_2`
+- [VG scene graph](http://cvgl.stanford.edu/scene-graph/VG/VG-scene-graph.zip) Extract this to `data/visual_genome/scene_graphs`
 
-(iii). Create image database + ROI database by going to the directory `preprocess_code` and running
+(iii). Create image database + ROI database by going to the directory `data/visual_genome/preprocess_code` and running
 ```
 python vg_to_imdb.py
 ./create_roidb.sh
@@ -57,12 +43,12 @@ Then, move `imdb_1024.h5`, 'VG-SGG.h5`, and `VG-SGG-dicts.json` up one level, in
 
 (vi). Change line 93 of `tools/train_net.py` to `True` to generate (5).
 
-(vii). Finally, place (1-5) in `data/vg`.
+(vii). Finally, place (1-5) in `data/visual_genome`.
 
 ```
-data/vg/imdb_1024.h5
-data/vg/bbox_distribution.npy
-data/vg/proposals.h5
-data/vg/VG-SGG-dicts.json
-data/vg/VG-SGG.h5
+data/visual_genome/imdb_1024.h5
+data/visual_genome/bbox_distribution.npy
+data/visual_genome/proposals.h5
+data/visual_genome/VG-SGG-dicts.json
+data/visual_genome/VG-SGG.h5
 ```
