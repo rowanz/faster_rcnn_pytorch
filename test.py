@@ -1,29 +1,28 @@
 import os
-import torch
 import cv2
+import torch
 import pickle
 import numpy as np
 
-from .faster_rcnn import network
-from .faster_rcnn.faster_rcnn import FasterRCNN, RPN
-from .faster_rcnn.utils.timer import Timer
-from .faster_rcnn.fast_rcnn.nms_wrapper import nms
+from faster_rcnn import network
+from faster_rcnn.faster_rcnn import FasterRCNN, RPN
+from faster_rcnn.utils.timer import Timer
+from faster_rcnn.fast_rcnn.nms_wrapper import nms
 
-from .faster_rcnn.fast_rcnn.bbox_transform import bbox_transform_inv, clip_boxes
-from .faster_rcnn.datasets.factory import get_imdb
-from .faster_rcnn.fast_rcnn.config import cfg, cfg_from_file, get_output_dir
+from faster_rcnn.fast_rcnn.bbox_transform import bbox_transform_inv, clip_boxes
+from faster_rcnn.datasets.factory import get_imdb
+from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file, get_output_dir
 
 
 # hyper-parameters
 # ------------
 imdb_name = 'voc_2007_test'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
-# trained_model = '/media/longc/Data/models/VGGnet_fast_rcnn_iter_70000.h5'
-trained_model = 'models/saved_model3/faster_rcnn_90000.h5'
+trained_model = 'checkpoints/VGGnet_fast_rcnn_iter_70000.h5'
 
 rand_seed = 1024
 
-save_name = 'faster_rcnn_100000'
+save_name = 'faster_rcnn_70000'
 max_per_image = 300
 thresh = 0.05
 vis = False

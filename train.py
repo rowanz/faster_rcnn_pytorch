@@ -3,14 +3,14 @@ import torch
 import numpy as np
 from datetime import datetime
 
-from .faster_rcnn import network
-from .faster_rcnn.faster_rcnn import FasterRCNN, RPN
-from .faster_rcnn.utils.timer import Timer
+from faster_rcnn import network
+from faster_rcnn.faster_rcnn import FasterRCNN, RPN
+from faster_rcnn.utils.timer import Timer
 
-from . import faster_rcnn.roi_data_layer.roidb as rdl_roidb
-from .faster_rcnn.roi_data_layer.layer import RoIDataLayer
-from .faster_rcnn.datasets.factory import get_imdb
-from .faster_rcnn.fast_rcnn.config import cfg, cfg_from_file
+import faster_rcnn.roi_data_layer.roidb as rdl_roidb
+from faster_rcnn.roi_data_layer.layer import RoIDataLayer
+from faster_rcnn.datasets.factory import get_imdb
+from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file
 
 try:
     from termcolor import cprint
@@ -28,7 +28,6 @@ def log_print(text, color=None, on_color=None, attrs=None):
         cprint(text, color=color, on_color=on_color, attrs=attrs)
     else:
         print(text)
-
 
 
 # hyper-parameters
