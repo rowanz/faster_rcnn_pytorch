@@ -9,12 +9,12 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-from ..utils.blob import im_list_to_blob
-from ..utils.timer import Timer
+from faster_rcnn.utils.blob import im_list_to_blob
+from faster_rcnn.utils.timer import Timer
 
 # TODO: make fast_rcnn irrelevant
 # >>>> obsolete, because it depends on sth outside of this project
-from ..fast_rcnn.config import cfg
+from faster_rcnn.fast_rcnn.config import cfg
 # <<<< obsolete
 
 

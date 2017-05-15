@@ -5,19 +5,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from .utils.timer import Timer
-from .utils.blob import im_list_to_blob
-from .fast_rcnn.nms_wrapper import nms
-from .rpn_msr.proposal_layer import proposal_layer as proposal_layer_py
-from .rpn_msr.anchor_target_layer import anchor_target_layer as anchor_target_layer_py
-from .rpn_msr.proposal_target_layer import proposal_target_layer as proposal_target_layer_py
-from .fast_rcnn.bbox_transform import bbox_transform_inv, clip_boxes
+from faster_rcnn.utils.timer import Timer
+from faster_rcnn.utils.blob import im_list_to_blob
+from faster_rcnn.fast_rcnn.nms_wrapper import nms
+from faster_rcnn.rpn_msr.proposal_layer import proposal_layer as proposal_layer_py
+from faster_rcnn.rpn_msr.anchor_target_layer import anchor_target_layer as anchor_target_layer_py
+from faster_rcnn.rpn_msr.proposal_target_layer import proposal_target_layer as proposal_target_layer_py
+from faster_rcnn.fast_rcnn.bbox_transform import bbox_transform_inv, clip_boxes
 
-from . import network
-from .network import Conv2d, FC
+from faster_rcnn import network
+from faster_rcnn.network import Conv2d, FC
 # from roi_pooling.modules.roi_pool_py import RoIPool
-from .roi_pooling.modules.roi_pool import RoIPool
-from .vgg16 import VGG16
+from faster_rcnn.roi_pooling.modules.roi_pool import RoIPool
+from faster_rcnn.vgg16 import VGG16
 
 
 def nms_detections(pred_boxes, scores, nms_thresh, inds=None):
@@ -31,7 +31,7 @@ def nms_detections(pred_boxes, scores, nms_thresh, inds=None):
 
 class RPN(nn.Module):
     _feat_stride = [16, ]
-    anchor_scales = [8, 16, 32]
+    anchor_scales = [4, 8, 16, 32]
 
     def __init__(self):
         super(RPN, self).__init__()

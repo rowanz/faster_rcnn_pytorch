@@ -10,14 +10,13 @@ import yaml
 import numpy as np
 import numpy.random as npr
 
-from rpn_msr.generate_anchors import generate_anchors
-from utils.cython_bbox import bbox_overlaps, bbox_intersections
+from faster_rcnn.rpn_msr.generate_anchors import generate_anchors
+from faster_rcnn.utils.cython_bbox import bbox_overlaps, bbox_intersections
 
 # TODO: make fast_rcnn irrelevant
 # >>>> obsolete, because it depends on sth outside of this project
-from fast_rcnn.config import cfg
-from fast_rcnn.bbox_transform import bbox_transform
-
+from faster_rcnn.fast_rcnn.config import cfg
+from faster_rcnn.fast_rcnn.bbox_transform import bbox_transform
 # <<<< obsolete
 
 DEBUG = False
