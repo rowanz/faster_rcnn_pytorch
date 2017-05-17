@@ -62,15 +62,16 @@ def proposal_target_layer(rpn_rois, gt_boxes, gt_ishard, dontcare_areas, _num_cl
     """
     jittered_gt_boxes = _jitter_gt_boxes(gt_easyboxes)
     zeros = np.zeros((gt_easyboxes.shape[0] * 2, 1), dtype=gt_easyboxes.dtype)
-    all_rois = np.vstack((all_rois, \
-                          np.hstack((zeros, np.vstack((gt_easyboxes[:, :-1], jittered_gt_boxes[:, :-1]))))))
+    all_rois = np.vstack((all_rois,
+                          np.hstack((zeros,
+                                     np.vstack(
+                                         (gt_easyboxes[:, :-1], jittered_gt_boxes[:, :-1]))))))
 
     # Sanity check: single batch only
-    assert np.all(all_rois[:, 0] == 0), \
-        'Only single item batches are supported'
+    assert np.all(all_rois[:, 0] == 0), 'Only single item batches are supported'
 
     num_images = 1
-    rois_per_image = cfg.TRAIN.BATCH_SIZE / num_images
+    rois_per_image = cfg.TRAIN.BATCH_SIZE // num_images
     fg_rois_per_image = int(np.round(cfg.TRAIN.FG_FRACTION * rois_per_image))
 
     # Sample rois with classification labels and bounding box regression
@@ -187,8 +188,7 @@ def _sample_rois(all_rois, gt_boxes, gt_ishard, dontcare_areas, fg_rois_per_imag
     # bbox_target_data (1 x H x W x A, 5)
     # bbox_targets <- (1 x H x W x A, K x 4)
     # bbox_inside_weights <- (1 x H x W x A, K x 4)
-    bbox_targets, bbox_inside_weights = \
-        _get_bbox_regression_labels(bbox_target_data, num_classes)
+    bbox_targets, bbox_inside_weights = _get_bbox_regression_labels(bbox_target_data, num_classes)
 
     return labels, rois, bbox_targets, bbox_inside_weights
 

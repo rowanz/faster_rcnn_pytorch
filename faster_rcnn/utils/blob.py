@@ -25,8 +25,12 @@ def im_list_to_blob(ims):
 
     return blob
 
-def prep_im_for_blob(im, pixel_means, target_size, max_size):
+def prep_im_for_blob(input_im, pixel_means, target_size, max_size):
     """Mean subtract and scale an image for use in a blob."""
+    if callable(input_im):
+        im = input_im()
+    else:
+        im = input_im
     im = im.astype(np.float32, copy=False)
     im -= pixel_means
     im_shape = im.shape

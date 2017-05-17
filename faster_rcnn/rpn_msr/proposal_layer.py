@@ -27,7 +27,7 @@ transformations to a set of regular boxes (called "anchors").
 
 
 def proposal_layer(rpn_cls_prob_reshape, rpn_bbox_pred, im_info, cfg_key, _feat_stride=[16, ],
-                   anchor_scales=[8, 16, 32]):
+                   anchor_scales=[4, 8, 16, 32]):
     """
     Parameters
     ----------

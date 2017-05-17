@@ -8,6 +8,7 @@
 # import datasets.ds_utils as ds_utils
 # from fast_rcnn.config import cfg
 import os.path as osp
+import cv2
 import sys
 import os
 import numpy as np
@@ -90,6 +91,9 @@ class coco(imdb):
         # Dataset splits that have ground-truth annotations (test splits
         # do not have gt annotations)
         self._gt_splits = ('train', 'val', 'minival')
+
+    def im_getter(self, i):
+        return cv2.imread(self.image_path_at(i))
 
     def _get_ann_file(self):
         prefix = 'instances' if self._image_set.find('test') == -1 \
@@ -324,7 +328,7 @@ class coco(imdb):
             # minus 1 because of __background__
             precision = coco_eval.eval['precision'][ind_lo:(ind_hi + 1), :, cls_ind - 1, 0, 2]
             ap = np.mean(precision[precision > -1])
-            print('{:.1f}'.format(100 * ap))
+            print('{: <14}: {:.1f}'.format(cls, 100 * ap))
 
         print('~~~~ Summary metrics ~~~~')
         coco_eval.summarize()

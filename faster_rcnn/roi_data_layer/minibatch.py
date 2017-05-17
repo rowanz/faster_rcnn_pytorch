@@ -52,7 +52,13 @@ def get_minibatch(roidb, num_classes):
         blobs['im_info'] = np.array(
             [[im_blob.shape[1], im_blob.shape[2], im_scales[0]]],
             dtype=np.float32)
-        blobs['im_name'] = os.path.basename(roidb[0]['image'])
+
+        # Stanford stuff doesn't have this
+        if 'db_idx' in roidb[0]:
+            imname = roidb[0]['db_idx']
+        else:
+            imname = os.path.basename(roidb[0]['image'])
+        blobs['im_name'] = imname
 
     else: # not using RPN
         # Now, build the region of interest and label blobs
@@ -146,7 +152,10 @@ def _get_image_blob(roidb, scale_inds):
     processed_ims = []
     im_scales = []
     for i in range(num_images):
-        im = cv2.imread(roidb[i]['image'])
+        if callable(roidb[i]['image']):
+            im = roidb[i]['image']
+        else:
+            im = cv2.imread(roidb[i]['image'])
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
         target_size = cfg.TRAIN.SCALES[scale_inds[i]]

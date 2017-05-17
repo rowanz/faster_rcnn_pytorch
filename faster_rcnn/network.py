@@ -48,12 +48,9 @@ def load_net(fname, net):
         param = torch.from_numpy(np.asarray(h5f[k]))
 
         if v.size() != param.size():
-
-            print("On k={}".format(k))
-            print("V size is {}, param is {}".format(v.size(), param.size()))
-
-        #v.copy_(param)
-    assert 0 == 1
+            print("On k={} desired size is {} but supplied {}".format(k, v.size(), param.size()))
+        else:
+            v.copy_(param)
 
 
 def load_pretrained_npy(faster_rcnn_model, fname):

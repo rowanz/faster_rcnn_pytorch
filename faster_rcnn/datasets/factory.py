@@ -18,6 +18,7 @@ from .kitti_tracking import kitti_tracking
 from .nthu import nthu
 from .coco import coco
 from .kittivoc import kittivoc
+from .vg_hdf5 import VisualGenome
 
 
 def _selective_search_IJCV_top_k(split, year, top_k):
@@ -67,6 +68,10 @@ for split in ['71', '370']:
     name = 'nthu_{}'.format(split)
     # print name
     __sets[name] = (lambda split=split: nthu(split))
+
+__sets['vg'] = (lambda split=0: VisualGenome(split=split))
+__sets['vg_val'] = (lambda split=2: VisualGenome(split=split))
+
 
 
 def get_imdb(name):
