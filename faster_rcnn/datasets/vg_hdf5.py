@@ -6,7 +6,8 @@ import scipy.sparse
 import h5py, json
 from faster_rcnn.fast_rcnn.config import cfg
 import pickle
-
+from faster_rcnn.datasets.vg_detection_eval import VGeval
+from collections import defaultdict
 
 class VisualGenome(imdb):
     def __init__(self, roidb_file='VG-SGG.h5', dict_file='VG-SGG-dicts.json',
@@ -161,8 +162,8 @@ class VisualGenome(imdb):
             ws = dets[:, 2] - xs + 1
             hs = dets[:, 3] - ys + 1
             results.extend(
-                [{'image_id': index,
-                  'category_id': cat_id,
+                [{'image_id': int(index),
+                  'category_id': int(cat_id),
                   'bbox': [xs[k], ys[k], ws[k], hs[k]],
                   'score': scores[k]} for k in range(dets.shape[0])])
         return results
@@ -183,14 +184,66 @@ class VisualGenome(imdb):
         with open(res_file, 'w') as fid:
             json.dump(results, fid)
 
+    def _print_detection_eval_metrics(self, coco_eval):
+        IoU_lo_thresh = 0.5
+        IoU_hi_thresh = 0.95
+        def _get_thr_ind(coco_eval, thr):
+            ind = np.where((coco_eval.params.iouThrs > thr - 1e-5) &
+                           (coco_eval.params.iouThrs < thr + 1e-5))[0][0]
+            iou_thr = coco_eval.params.iouThrs[ind]
+            assert np.isclose(iou_thr, thr)
+            return ind
+
+        ind_lo = _get_thr_ind(coco_eval, IoU_lo_thresh)
+        ind_hi = _get_thr_ind(coco_eval, IoU_hi_thresh)
+        # precision has dims (iou, recall, cls, area range, max dets)
+        # area range index 0: all area ranges
+        # max dets index 2: 100 per image
+        precision = \
+            coco_eval.eval['precision'][ind_lo:(ind_hi + 1), :, :, 0, 2]
+        ap_default = np.mean(precision[precision > -1])
+        print(('~~~~ Mean and per-category AP @ IoU=[{:.2f},{:.2f}] '
+               '~~~~').format(IoU_lo_thresh, IoU_hi_thresh))
+        print('{:.1f}'.format(100 * ap_default))
+        for cls_ind, cls in enumerate(self.classes):
+            if cls == '__background__':
+                continue
+            # minus 1 because of __background__
+            precision = coco_eval.eval['precision'][ind_lo:(ind_hi + 1), :, cls_ind - 1, 0, 2]
+            ap = np.mean(precision[precision > -1])
+            print('{: <14}: {:.1f}'.format(cls, 100 * ap))
+
+        print('~~~~ Summary metrics ~~~~')
+        coco_eval.summarize()
+
     def evaluate_detections(self, all_boxes, output_dir):
         res_file = os.path.join(output_dir, 'vg_results')
         res_file += '.json'
         self._write_vg_results_file(all_boxes, res_file)
-        # Only do evaluation on non-test sets
-        # if self._image_set.find('test') == -1:
-        #     self._do_detection_eval(res_file, output_dir)
 
+        gts = defaultdict(list)
+        preds = defaultdict(list)
+        for category_id, boxes in enumerate(all_boxes):
+            for img_id, b in enumerate(boxes):
+                for row in b:
+                    preds[(img_id, category_id)].append((row[-1], row[:4]))
+
+        for i in range(self.num_images):
+            for lab, box in zip(
+                    self.labels[self.im_to_first_box[i]:self.im_to_last_box[i]+1],
+                    self.all_boxes[self.im_to_first_box[i]:self.im_to_last_box[i]+1],
+            ):
+                gts[i, lab].append(box)
+
+        vg_eval = VGeval(gts, preds)
+        vg_eval.evaluate()
+        vg_eval.accumulate()
+        self._print_detection_eval_metrics(vg_eval)
+        eval_file = os.path.join(output_dir, 'vg_detection_eval.pkl')
+        with open(eval_file, 'wb') as fid:
+            pickle.dump(vg_eval, fid, pickle.HIGHEST_PROTOCOL)
+        print('Wrote VG eval results to: {}'.format(eval_file))
+        self.vg_eval = vg_eval
 
     def _get_widths(self):
         return self.im_sizes[:,0]

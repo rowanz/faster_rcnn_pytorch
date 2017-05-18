@@ -1,11 +1,15 @@
 import cv2
 import numpy as np
 
+import os
+
+
 from faster_rcnn import network
 from faster_rcnn.faster_rcnn import FasterRCNN
 from faster_rcnn.deploy import test_net
 from faster_rcnn.datasets.factory import get_imdb
-from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file
+from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file, get_output_dir
+import pickle
 
 # hyper-parameters
 # ------------
@@ -37,6 +41,13 @@ print('load model successfully!')
 net.cuda()
 net.eval()
 
-# evaluation
-test_net(save_name, net, imdb, max_per_image, thresh=thresh, test_bbox_reg=cfg.TEST.BBOX_REG,
-         vis=False)
+# # evaluation
+# test_net(save_name, net, imdb, max_per_image, thresh=thresh, test_bbox_reg=cfg.TEST.BBOX_REG,
+#          vis=False)
+output_dir = get_output_dir(imdb, save_name)
+det_file = os.path.join(output_dir, 'detections.pkl')
+
+with open(det_file, 'rb') as f:
+    all_boxes = pickle.load(f)
+
+imdb.evaluate_detections(all_boxes, output_dir)

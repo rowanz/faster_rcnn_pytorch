@@ -12,12 +12,7 @@ __sets = {}
 import numpy as np
 
 from .pascal_voc import pascal_voc
-from .imagenet3d import imagenet3d
-from .kitti import kitti
-from .kitti_tracking import kitti_tracking
-from .nthu import nthu
 from .coco import coco
-from .kittivoc import kittivoc
 from .vg_hdf5 import VisualGenome
 
 
@@ -45,12 +40,6 @@ for year in ['2007', '2012', '0712']:
         # print name
         __sets[name] = (lambda split=split: kittivoc(split))
 
-# # KITTI dataset
-for split in ['train', 'val', 'trainval', 'test']:
-    name = 'kitti_{}'.format(split)
-    # print name
-    __sets[name] = (lambda split=split: kitti(split))
-
 # Set up coco_2014_<split>
 for year in ['2014']:
     for split in ['train', 'val', 'minival', 'valminusminival']:
@@ -62,12 +51,6 @@ for year in ['2015']:
     for split in ['test', 'test-dev']:
         name = 'coco_{}_{}'.format(year, split)
         __sets[name] = (lambda split=split, year=year: coco(split, year))
-
-# NTHU dataset
-for split in ['71', '370']:
-    name = 'nthu_{}'.format(split)
-    # print name
-    __sets[name] = (lambda split=split: nthu(split))
 
 __sets['vg'] = (lambda split=0: VisualGenome(split=split))
 __sets['vg_val'] = (lambda split=2: VisualGenome(split=split))
