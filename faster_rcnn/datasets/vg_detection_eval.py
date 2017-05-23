@@ -124,7 +124,7 @@ class VGeval:
             return None
 
         # Highest score first
-        dt = sorted(dt, key=lambda d: -d[1])[:maxDet]
+        dt = sorted(dt, key=lambda d: -d[0])[:maxDet]
         # load computed ious
         N_iou = len(self.ious[imgId, catId])
         ious = self.ious[imgId, catId][0:maxDet, np.arange(len(gt))] if N_iou > 0 else self.ious[
@@ -135,7 +135,8 @@ class VGeval:
         D = len(dt)
         gtm = np.zeros((T, G))
         dtm = np.zeros((T, D))
-        dtIg = np.zeros((T, D))
+        gtIg = np.array([0 for g in gt])
+        dtIg = np.zeros((T,D))
         if not len(ious) == 0:
             for tind, t in enumerate(p.iouThrs):
                 for dind, (sc, d) in enumerate(dt):
@@ -155,8 +156,15 @@ class VGeval:
                     # if match made store id of match for both dt and gt
                     if m == -1:
                         continue
+                    dtIg[tind,dind] = gtIg[m]
                     dtm[tind, dind] = m
                     gtm[tind, m] = dind
+
+        # set unmatched detections outside of area range to ignore
+        areas = np.abs([(x[1][0]-x[1][2])*(x[1][1]-x[1][3]) for x in dt])
+        a = np.array([a < aRng[0] or a > aRng[1] for a in areas]).reshape((1, len(dt)))
+
+        dtIg = np.logical_or(dtIg, np.logical_and(dtm == 0, np.repeat(a, T, 0)))
 
         # store results for given image and category
         return {

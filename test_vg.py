@@ -6,7 +6,7 @@ import os
 
 from faster_rcnn import network
 from faster_rcnn.faster_rcnn import FasterRCNN
-from faster_rcnn.deploy import test_net
+from faster_rcnn.deploy import test_net_sg
 from faster_rcnn.datasets.factory import get_imdb
 from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file, get_output_dir
 import pickle
@@ -30,7 +30,7 @@ if rand_seed is not None:
 cfg_from_file(cfg_file)
 
 # load data
-imdb = get_imdb('vg_val')
+imdb = get_imdb('vg_val_small')
 imdb.competition_mode(on=True)
 
 # load net
@@ -43,11 +43,13 @@ net.eval()
 
 # # evaluation
 # test_net(save_name, net, imdb, max_per_image, thresh=thresh, test_bbox_reg=cfg.TEST.BBOX_REG,
-#          vis=False)
-output_dir = get_output_dir(imdb, save_name)
-det_file = os.path.join(output_dir, 'detections.pkl')
+         # vis=False)
+test_net_sg('blah', net, imdb)
 
-with open(det_file, 'rb') as f:
-    all_boxes = pickle.load(f)
-
-imdb.evaluate_detections(all_boxes, output_dir)
+# output_dir = get_output_dir(imdb, save_name)
+# det_file = os.path.join(output_dir, 'detections.pkl')
+#
+# with open(det_file, 'rb') as f:
+#     all_boxes = pickle.load(f)
+#
+# imdb.evaluate_detections(all_boxes, output_dir)

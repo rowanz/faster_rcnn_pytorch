@@ -54,6 +54,7 @@ for year in ['2015']:
 
 __sets['vg'] = (lambda split=0: VisualGenome(split=split))
 __sets['vg_val'] = (lambda split=2: VisualGenome(split=split))
+__sets['vg_val_small'] = (lambda split=2: VisualGenome(split=split, num_im=1000))
 
 
 

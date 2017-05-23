@@ -14,6 +14,7 @@ from faster_rcnn.datasets.factory import get_imdb
 from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file, get_output_dir
 import matplotlib.cm as cmx
 import matplotlib.colors as colors
+from faster_rcnn.datasets.sg_eval import SceneGraphEvaluator
 
 
 def get_cmap(N):
@@ -146,3 +147,73 @@ def test_net(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=True
 
     print('Evaluating detections')
     imdb.evaluate_detections(all_boxes, output_dir)
+
+def non_gt_rois(roidb):
+    overlaps = roidb['max_overlaps']
+    gt_inds = np.where(overlaps == 1)[0]
+    non_gt_inds = np.setdiff1d(np.arange(overlaps.shape[0]), gt_inds)
+    rois = roidb['boxes'][non_gt_inds]
+    scores = roidb['roi_scores'][non_gt_inds]
+    return rois, scores
+
+def gt_rois(roidb):
+    overlaps = roidb['max_overlaps']
+    gt_inds = np.where(overlaps == 1)[0]
+    rois = roidb['boxes'][gt_inds]
+    return rois
+
+
+def test_net_sg(name, net, imdb, mode='sg_det', max_per_image=100):
+    """
+    Tests the network the stanford scene-graph way.
+    :param net_name: 
+    :param weight_name: 
+    :param imdb: 
+    :param mode: 
+    :param max_per_image: 
+    :return: 
+    """
+    num_images = len(imdb.image_index)
+
+    # timers
+    _t = {'im_detect' : Timer(), 'evaluate' : Timer()}
+
+    if mode == 'all':
+        eval_modes = ['pred_cls', 'sg_cls', 'sg_det']
+    else:
+        eval_modes = [mode]
+
+    # initialize evaluator for each task
+    evaluators = {}
+    for m in eval_modes:
+        evaluators[m] = SceneGraphEvaluator(imdb, mode=m)
+
+    for im_i in range(num_images):
+        im = imdb.im_getter(im_i)
+
+        for m in eval_modes:
+            # if mode == 'pred_cls' or mode == 'sg_cls':
+            #     use ground truth object locations
+                # bbox_reg = False
+                # box_proposals = gt_rois(roidb[im_i])
+            _t['im_detect'].tic()
+
+            scores, boxes = im_detect(net, im, test_bbox_reg=True)
+
+            if boxes.size == 0:
+                continue
+
+            _t['im_detect'].toc()
+            _t['evaluate'].tic()
+
+            evaluators[m].evaluate_scene_graph_entry(
+                {'boxes':boxes, 'scores':scores}, im_i, iou_thresh=0.5)
+            _t['evaluate'].toc()
+
+        print('im_detect: {:d}/{:d} {:.3f}s {:.3f}s' \
+              .format(im_i + 1, num_images, _t['im_detect'].average_time,
+                      _t['evaluate'].average_time))
+
+    # print out evaluation results
+    for mode in eval_modes:
+        evaluators[mode].print_stats()
