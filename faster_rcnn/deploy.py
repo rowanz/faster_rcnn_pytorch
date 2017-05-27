@@ -15,7 +15,8 @@ from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file, get_output_dir
 import matplotlib.cm as cmx
 import matplotlib.colors as colors
 from faster_rcnn.datasets.sg_eval import SceneGraphEvaluator
-
+from collections import namedtuple
+import h5py
 
 def get_cmap(N):
     """Returns a function that maps each index in 0, 1, ... N-1 to a distinct RGB color."""
@@ -107,6 +108,7 @@ def test_net(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=True
         if vis:
             # im2show = np.copy(im[:, :, (2, 1, 0)])
             im2show = np.copy(im, 'C')
+            im2show_gt = np.copy(im, 'C')
 
         # skip j = 0, because it's the background class
         for j in range(1, imdb.num_classes):
@@ -119,6 +121,17 @@ def test_net(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=True
             cls_dets = cls_dets[keep, :]
             if vis:
                 im2show = vis_detections(im2show, imdb.classes[j], cls_dets, thresh=thresh,
+                                         color=cmap(j))
+
+                gt_boxes = imdb.all_boxes[imdb.im_to_first_box[i]:imdb.im_to_last_box[i] + 1, :]
+                gt_classes = imdb.labels[imdb.im_to_first_box[i]:imdb.im_to_last_box[i] + 1]
+
+                gt_dets = np.hstack((
+                    gt_boxes,
+                    np.ones((gt_boxes.shape[0], 1)),
+                ))[gt_classes == j]
+
+                im2show_gt = vis_detections(im2show_gt, imdb.classes[j], gt_dets, thresh=thresh,
                                          color=cmap(j))
             all_boxes[j][i] = cls_dets
 
@@ -141,6 +154,7 @@ def test_net(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=True
             if not os.path.exists(path):
                 os.mkdir(path)
             cv2.imwrite(os.path.join(path, '{}.jpg'.format(i)), im2show)
+            cv2.imwrite(os.path.join(path, '{}_gt.jpg'.format(i)), im2show_gt)
 
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
@@ -217,3 +231,124 @@ def test_net_sg(name, net, imdb, mode='sg_det', max_per_image=100):
     # print out evaluation results
     for mode in eval_modes:
         evaluators[mode].print_stats()
+
+
+def im_detect_with_feats(net, image):
+    """Detect object classes in an image given object proposals.
+    Returns:
+        scores (ndarray): R x K array of object class scores (K includes
+            background as object category 0)
+        boxes (ndarray): R x (4*K) array of predicted bounding boxes
+    """
+
+    im_data, im_scales = net.get_image_blob(image)
+    im_info = np.array(
+        [[im_data.shape[1], im_data.shape[2], im_scales[0]]],
+        dtype=np.float32)
+
+    cls_prob, bbox_pred, rois, feats = net(im_data, im_info, return_feats=True)
+
+    scores = cls_prob.data.cpu().numpy()
+    feats = feats.data.cpu().numpy()
+    boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
+
+    # Bounding box regression: Apply bounding-box regression deltas
+    box_deltas = bbox_pred.data.cpu().numpy()
+    pred_boxes = bbox_transform_inv(boxes, box_deltas)
+    pred_boxes = clip_boxes(pred_boxes, image.shape)
+
+    return scores, pred_boxes, feats
+
+def make_results_tuple(all_boxes, gt_classes, gt_boxes, feats):
+    classes = np.concatenate(
+        [i*np.ones(x.shape[0], dtype=np.int32) for i,x in enumerate(all_boxes) if len(x) > 0]
+    )
+
+    boxes_score = np.vstack([x for x in all_boxes if len(x) > 0])
+    perm = np.argsort(-boxes_score[:,4])
+
+    num_gt = gt_classes.shape[0]
+
+    boxes = np.vstack((
+        gt_boxes,
+        np.round(boxes_score[:, :4]).astype(np.int32)[perm],
+    ))
+
+    scores = np.concatenate((
+        np.ones(num_gt, dtype=np.float32),
+        boxes_score[:, 4][perm],
+    ))
+
+    is_gt = np.concatenate((
+        np.ones(num_gt, dtype=np.int32),
+        np.zeros(len(perm), dtype=np.int32),
+    ))
+
+    classes = np.concatenate((
+        gt_classes,
+        classes[perm],
+    ))
+
+    assert is_gt.shape[0] == boxes.shape[0]
+    assert boxes.shape[0] == scores.shape[0]
+
+    return {'is_gt': is_gt, 'boxes': boxes, 'scores': scores, 
+            'classes': classes, 'feats': feats}
+
+
+def get_preds(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=True, vis=False):
+    """Extract predictions and visual features (of the GT boxes)."""
+    num_images = len(imdb.image_index)
+    output_dir = get_output_dir(imdb, name)
+
+    # timers
+    _t = {'im_detect': Timer(), 'misc': Timer()}
+    det_file = os.path.join(output_dir, 'saved_feats.pkl')
+
+    dets = []
+    for i in range(num_images):
+        all_boxes = [[] for j in range(imdb.num_classes)]
+
+        gt_boxes = imdb.all_boxes[imdb.im_to_first_box[i]:imdb.im_to_last_box[i] + 1, :]
+        gt_classes = imdb.labels[imdb.im_to_first_box[i]:imdb.im_to_last_box[i] + 1]
+
+        num_gt = gt_classes.shape[0]
+
+        im = imdb.im_getter(i)
+        _t['im_detect'].tic()
+        scores, boxes, feats = im_detect_with_feats(net, im, gt_boxes)
+
+        detect_time = _t['im_detect'].toc(average=False)
+
+        _t['misc'].tic()
+
+        # skip j = 0, because it's the background class
+        for j in range(1, imdb.num_classes):
+            inds = np.where(scores[:, j] > thresh)[0]
+            cls_scores = scores[inds, j]
+            cls_boxes = boxes[inds, j * 4:(j + 1) * 4]
+            cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])).astype(
+                np.float32, copy=False)
+            keep = nms(cls_dets, cfg.TEST.NMS)
+            cls_dets = cls_dets[keep, :]
+            all_boxes[j] = cls_dets
+
+        # Limit to max_per_image detections *over all classes*
+        if max_per_image > 0:
+            image_scores = np.hstack([all_boxes[j][:, -1]
+                                      for j in range(1, imdb.num_classes)])
+            if len(image_scores) > max_per_image:
+                image_thresh = np.sort(image_scores)[-max_per_image]
+                for j in range(1, imdb.num_classes):
+                    keep = np.where(all_boxes[j][:, -1] >= image_thresh)[0]
+                    all_boxes[j] = all_boxes[j][keep, :]
+        nms_time = _t['misc'].toc(average=False)
+
+        dets.append(make_results_tuple(all_boxes, gt_classes, gt_boxes, feats))
+        dets[-1]['shape'] = im.shape
+        if i % 100 == 0:
+            print('im_detect: {:d}/{:d} {:.3f}s {:.3f}s'.format(
+                i + 1, num_images, detect_time, nms_time), flush=True)
+
+    with open(det_file, 'wb') as f:
+        pickle.dump(dets, f, pickle.HIGHEST_PROTOCOL)

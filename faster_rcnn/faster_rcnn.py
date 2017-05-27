@@ -43,7 +43,7 @@ class RPN(nn.Module):
 
         # loss
         self.cross_entropy = None
-        self.los_box = None
+        self.loss_box = None
 
     @property
     def loss(self):
@@ -211,7 +211,7 @@ class FasterRCNN(nn.Module):
         # print self.rpn.loss_box
         return self.cross_entropy + self.loss_box * 10
 
-    def forward(self, im_data, im_info, gt_boxes=None, gt_ishard=None, dontcare_areas=None):
+    def forward(self, im_data, im_info, gt_boxes=None, gt_ishard=None, dontcare_areas=None, return_feats=False):
         features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
 
         if self.training:
@@ -233,6 +233,8 @@ class FasterRCNN(nn.Module):
         if self.training:
             self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
 
+        if return_feats:
+            return cls_prob, bbox_pred, rois, pooled_features
         return cls_prob, bbox_pred, rois
 
     def build_loss(self, cls_score, bbox_pred, roi_data):

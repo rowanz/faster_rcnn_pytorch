@@ -6,7 +6,8 @@ import os
 
 from faster_rcnn import network
 from faster_rcnn.faster_rcnn import FasterRCNN
-from faster_rcnn.deploy import test_net_sg
+from faster_rcnn.deploy import test_net_sg, test_net
+
 from faster_rcnn.datasets.factory import get_imdb
 from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file, get_output_dir
 import pickle
@@ -42,10 +43,10 @@ net.cuda()
 net.eval()
 
 # # evaluation
-# test_net(save_name, net, imdb, max_per_image, thresh=thresh, test_bbox_reg=cfg.TEST.BBOX_REG,
-         # vis=False)
-test_net_sg('blah', net, imdb)
-
+test_net(save_name, net, imdb, max_per_image, thresh=thresh, test_bbox_reg=cfg.TEST.BBOX_REG,
+         vis=True)
+# test_net_sg('blah', net, imdb)
+#
 # output_dir = get_output_dir(imdb, save_name)
 # det_file = os.path.join(output_dir, 'detections.pkl')
 #
