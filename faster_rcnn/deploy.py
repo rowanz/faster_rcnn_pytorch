@@ -233,33 +233,7 @@ def test_net_sg(name, net, imdb, mode='sg_det', max_per_image=100):
         evaluators[mode].print_stats()
 
 
-def im_detect_with_feats(net, image):
-    """Detect object classes in an image given object proposals.
-    Returns:
-        scores (ndarray): R x K array of object class scores (K includes
-            background as object category 0)
-        boxes (ndarray): R x (4*K) array of predicted bounding boxes
-    """
-
-    im_data, im_scales = net.get_image_blob(image)
-    im_info = np.array(
-        [[im_data.shape[1], im_data.shape[2], im_scales[0]]],
-        dtype=np.float32)
-
-    cls_prob, bbox_pred, rois, feats = net(im_data, im_info, return_feats=True)
-
-    scores = cls_prob.data.cpu().numpy()
-    feats = feats.data.cpu().numpy()
-    boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
-
-    # Bounding box regression: Apply bounding-box regression deltas
-    box_deltas = bbox_pred.data.cpu().numpy()
-    pred_boxes = bbox_transform_inv(boxes, box_deltas)
-    pred_boxes = clip_boxes(pred_boxes, image.shape)
-
-    return scores, pred_boxes, feats
-
-def make_results_tuple(all_boxes, gt_classes, gt_boxes, feats):
+def make_results_tuple(all_boxes, gt_classes, gt_boxes):
     classes = np.concatenate(
         [i*np.ones(x.shape[0], dtype=np.int32) for i,x in enumerate(all_boxes) if len(x) > 0]
     )
@@ -293,7 +267,7 @@ def make_results_tuple(all_boxes, gt_classes, gt_boxes, feats):
     assert boxes.shape[0] == scores.shape[0]
 
     return {'is_gt': is_gt, 'boxes': boxes, 'scores': scores, 
-            'classes': classes, 'feats': feats}
+            'classes': classes}
 
 
 def get_preds(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=True, vis=False):
@@ -312,11 +286,9 @@ def get_preds(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=Tru
         gt_boxes = imdb.all_boxes[imdb.im_to_first_box[i]:imdb.im_to_last_box[i] + 1, :]
         gt_classes = imdb.labels[imdb.im_to_first_box[i]:imdb.im_to_last_box[i] + 1]
 
-        num_gt = gt_classes.shape[0]
-
         im = imdb.im_getter(i)
         _t['im_detect'].tic()
-        scores, boxes, feats = im_detect_with_feats(net, im, gt_boxes)
+        scores, boxes = im_detect(net, im)
 
         detect_time = _t['im_detect'].toc(average=False)
 
@@ -344,8 +316,7 @@ def get_preds(name, net, imdb, max_per_image=300, thresh=0.05, test_bbox_reg=Tru
                     all_boxes[j] = all_boxes[j][keep, :]
         nms_time = _t['misc'].toc(average=False)
 
-        dets.append(make_results_tuple(all_boxes, gt_classes, gt_boxes, feats))
-        dets[-1]['shape'] = im.shape
+        dets.append(make_results_tuple(all_boxes, gt_classes, gt_boxes))
         if i % 100 == 0:
             print('im_detect: {:d}/{:d} {:.3f}s {:.3f}s'.format(
                 i + 1, num_images, detect_time, nms_time), flush=True)

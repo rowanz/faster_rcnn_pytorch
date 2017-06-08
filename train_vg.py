@@ -12,7 +12,7 @@ from faster_rcnn.faster_rcnn import FasterRCNN, RPN
 from faster_rcnn.utils.timer import Timer
 
 from faster_rcnn.roi_data_layer.layer import RoIDataLayer
-from faster_rcnn.datasets.factory import get_imdb
+from faster_rcnn.datasets.vg_hdf5 import VisualGenome
 from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file
 
 try:
@@ -38,10 +38,10 @@ def log_print(text, color=None, on_color=None, attrs=None):
 imdb_name = 'vg'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 pretrained_model = 'checkpoints/coco-vgg16.hdf5'
-output_dir = 'checkpoints/visual-genome'
+output_dir = 'checkpoints/visual-genome-nopretrain'
 
 start_step = 0
-end_step = 100000
+end_step = 1000000
 lr_decay_steps = {60000, 80000}
 lr_decay = 1./10
 
@@ -65,7 +65,7 @@ disp_interval = cfg.TRAIN.DISPLAY
 log_interval = cfg.TRAIN.LOG_IMAGE_ITERS
 
 # load data
-imdb = get_imdb(imdb_name)
+imdb = VisualGenome(split=0, num_im=50)
 roidb = imdb.roidb
 data_layer = RoIDataLayer(roidb, imdb.num_classes)
 
@@ -73,6 +73,7 @@ data_layer = RoIDataLayer(roidb, imdb.num_classes)
 net = FasterRCNN(classes=imdb.classes, debug=_DEBUG)
 network.weights_normal_init(net, dev=0.01)
 network.load_net(pretrained_model, net)
+# network.load_pretrained_npy(net, 'checkpoints/VGG_imagenet.npy')
 net.cuda()
 net.train()
 
@@ -81,7 +82,7 @@ params = list(net.parameters())
 print("Params are {}".format(
     '\n'.join(['{}: {}'.format(n, p.size()) for n,p in net.named_parameters()]))
 )
-# optimizer = torch.optim.Adam(params[-8:], lr=lr)
+# optimizer = torch.optim.Adam(params, lr=0.001, eps=1e-4, weight_decay=weight_decay)
 optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
 if not os.path.exists(output_dir):

@@ -27,8 +27,10 @@ class RoIPoolFunction(Function):
         else:
             output = output.cuda()
             argmax = argmax.cuda()
-            roi_pooling.roi_pooling_forward_cuda(self.pooled_height, self.pooled_width, self.spatial_scale,
+            assert rois.size(1) == 5
+            res = roi_pooling.roi_pooling_forward_cuda(self.pooled_height, self.pooled_width, self.spatial_scale,
                                                  features, rois, output, argmax)
+            assert res == 1
             self.output = output
             self.argmax = argmax
             self.rois = rois

@@ -54,7 +54,8 @@ def load_net(fname, net):
 
 
 def load_pretrained_npy(faster_rcnn_model, fname):
-    params = np.load(fname).item()
+    params = np.load(fname, encoding='bytes').item()
+    print([x for x in params.keys()])
     # vgg16
     vgg16_dict = faster_rcnn_model.rpn.features.state_dict()
     for name, val in list(vgg16_dict.items()):
@@ -64,25 +65,25 @@ def load_pretrained_npy(faster_rcnn_model, fname):
         if name.find('bn.') >= 0:
             continue
         i, j = int(name[4]), int(name[6]) + 1
-        ptype = 'weights' if name[-1] == 't' else 'biases'
-        key = 'conv{}_{}'.format(i, j)
+        ptype = b'weights' if name[-1] == 't' else b'biases'
+        key = 'conv{}_{}'.format(i, j).encode()
         param = torch.from_numpy(params[key][ptype])
 
-        if ptype == 'weights':
+        if ptype == b'weights':
             param = param.permute(3, 2, 0, 1)
 
         val.copy_(param)
 
     # fc6 fc7
     frcnn_dict = faster_rcnn_model.state_dict()
-    pairs = {'fc6.fc': 'fc6', 'fc7.fc': 'fc7'}
+    pairs = {'fc6.fc': b'fc6', 'fc7.fc': b'fc7'}
     for k, v in list(pairs.items()):
         key = '{}.weight'.format(k)
-        param = torch.from_numpy(params[v]['weights']).permute(1, 0)
+        param = torch.from_numpy(params[v][b'weights']).permute(1, 0)
         frcnn_dict[key].copy_(param)
 
         key = '{}.bias'.format(k)
-        param = torch.from_numpy(params[v]['biases'])
+        param = torch.from_numpy(params[v][b'biases'])
         frcnn_dict[key].copy_(param)
 
 

@@ -233,8 +233,6 @@ class FasterRCNN(nn.Module):
         if self.training:
             self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
 
-        if return_feats:
-            return cls_prob, bbox_pred, rois, pooled_features
         return cls_prob, bbox_pred, rois
 
     def build_loss(self, cls_score, bbox_pred, roi_data):

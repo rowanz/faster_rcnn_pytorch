@@ -1,3 +1,6 @@
+"""
+Code for training custom vg detection...
+"""
 import cv2
 import os
 import torch
@@ -8,11 +11,10 @@ from faster_rcnn import network
 from faster_rcnn.faster_rcnn import FasterRCNN, RPN
 from faster_rcnn.utils.timer import Timer
 
-import faster_rcnn.roi_data_layer.roidb as rdl_roidb
 from faster_rcnn.roi_data_layer.layer import RoIDataLayer
-from faster_rcnn.datasets.factory import get_imdb
+from faster_rcnn.datasets.vg_hdf5 import VisualGenome
 from faster_rcnn.fast_rcnn.config import cfg, cfg_from_file
-
+from argparse import ArgumentParser
 try:
     from termcolor import cprint
 except ImportError:
@@ -25,30 +27,33 @@ except ImportError:
 
 
 def log_print(text, color=None, on_color=None, attrs=None):
-    if cprint is not None:
-        cprint(text, color=color, on_color=on_color, attrs=attrs)
+    if cprint is None or color is None:
+        print(text, flush=True)
     else:
-        print(text)
+        cprint(text, color=color, on_color=on_color, attrs=attrs)
 
+parser = ArgumentParser(description='Train script')
+parser.add_argument('-emb', type=str, help='What to use for embeddings')
+parser.add_argument('-n', default=500000, type=int, help='Num steps')
+parser.add_argument('-lr', default=1e-4, type=float, help='learning rate')
+parser.add_argument('-eps', default=1e-8, type=float, help='epsilon')
+parser.add_argument('-skip', default=10, type=int, help='layers to skip')
+args = vars(parser.parse_args())
 
 # hyper-parameters
 # ------------
-imdb_name = 'voc_2007_trainval'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
-pretrained_model = 'checkpoints/VGG_imagenet.npy'
-output_dir = 'checkpoints/voc'
+pretrained_model = 'checkpoints/coco-vgg16.hdf5'
+output_dir = 'checkpoints/visual-genome2'
 
 start_step = 0
-end_step = 100000
-lr_decay_steps = {60000, 80000}
-lr_decay = 1./10
+end_step = args['n']
 
-rand_seed = 1024
+rand_seed = 123456
 _DEBUG = True
-use_tensorboard = True
+use_tensorboard = False
 remove_all_log = False   # remove all historical experiments in TensorBoard
 exp_name = None # the previous experiment name in TensorBoard
-
 # ------------
 
 if rand_seed is not None:
@@ -56,36 +61,30 @@ if rand_seed is not None:
 
 # load config
 cfg_from_file(cfg_file)
-lr = cfg.TRAIN.LEARNING_RATE
-momentum = cfg.TRAIN.MOMENTUM
 weight_decay = cfg.TRAIN.WEIGHT_DECAY
-disp_interval = cfg.TRAIN.DISPLAY
+disp_interval = cfg.TRAIN.DISPLAY*5
 log_interval = cfg.TRAIN.LOG_IMAGE_ITERS
 
 # load data
-imdb = get_imdb(imdb_name)
-rdl_roidb.prepare_roidb(imdb)
+imdb = VisualGenome(split=0)
 roidb = imdb.roidb
 data_layer = RoIDataLayer(roidb, imdb.num_classes)
 
 # load net
 net = FasterRCNN(classes=imdb.classes, debug=_DEBUG)
 network.weights_normal_init(net, dev=0.01)
-network.load_pretrained_npy(net, pretrained_model)
-# model_file = '/media/longc/Data/models/VGGnet_fast_rcnn_iter_70000.h5'
-# model_file = 'models/saved_model3/faster_rcnn_60000.h5'
-# network.load_net(model_file, net)
-# exp_name = 'vgg16_02-19_13-24'
-# start_step = 60001
-# lr /= 10.
-# network.weights_normal_init([net.bbox_fc, net.score_fc, net.fc6, net.fc7], dev=0.01)
-
+network.load_net(pretrained_model, net)
 net.cuda()
 net.train()
 
 params = list(net.parameters())
-# optimizer = torch.optim.Adam(params[-8:], lr=lr)
-optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+
+print("Params are {}".format(
+    '\n'.join(['{}: {} {}'.format(n, p.size(), '(opt)' if i < args['skip']*2 else '     ')
+               for i, (n,p) in enumerate(net.named_parameters())])
+))
+optimizer = torch.optim.Adam(params[args['skip']*2:], lr=args['lr'], weight_decay=cfg.TRAIN.WEIGHT_DECAY,
+                             eps=args['eps'])
 
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
@@ -113,6 +112,7 @@ for step in range(start_step, end_step+1):
 
     # get one batch
     blobs = data_layer.forward()
+    ######
     im_data = blobs['data']
     im_info = blobs['im_info']
     gt_boxes = blobs['gt_boxes']
@@ -135,7 +135,6 @@ for step in range(start_step, end_step+1):
     # backward
     optimizer.zero_grad()
     loss.backward()
-    network.clip_gradient(net, 10.)
     optimizer.step()
 
     if step % disp_interval == 0:
@@ -156,7 +155,7 @@ for step in range(start_step, end_step+1):
 
     if use_tensorboard and step % log_interval == 0:
         exp.add_scalar_value('train_loss', train_loss / step_cnt, step=step)
-        exp.add_scalar_value('learning_rate', lr, step=step)
+        exp.add_scalar_value('learning_rate', args['lr'], step=step)
         if _DEBUG:
             exp.add_scalar_value('true_positive', tp/fg*100., step=step)
             exp.add_scalar_value('true_negative', tf/bg*100., step=step)
@@ -166,13 +165,10 @@ for step in range(start_step, end_step+1):
                       'rcnn_box': float(net.loss_box.data.cpu().numpy()[0])}
             exp.add_scalar_dict(losses, step=step)
 
-    if (step % 10000 == 0) and step > 0:
+    if (step % 20000 == 0) and step > 0:
         save_name = os.path.join(output_dir, 'faster_rcnn_{}.h5'.format(step))
         network.save_net(save_name, net)
         print(('save model: {}'.format(save_name)))
-    if step in lr_decay_steps:
-        lr *= lr_decay
-        optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     if re_cnt:
         tp, tf, fg, bg = 0., 0., 0, 0
